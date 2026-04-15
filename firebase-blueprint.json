@@ -1,0 +1,98 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User information",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "email": { "type": "string" },
+        "displayName": { "type": "string" },
+        "photoURL": { "type": "string" },
+        "role": { "type": "string", "enum": ["OPERATOR", "TEAM_LEADER", "MAINTENANCE", "MANAGER"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "email"]
+    },
+    "Machine": {
+      "title": "Machine",
+      "description": "Machine status and details",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "code": { "type": "string" },
+        "brand": { "type": "string" },
+        "capacity": { "type": "number" },
+        "area": { "type": "number" },
+        "type": { "type": "string" },
+        "status": { "type": "string", "enum": ["RUNNING", "STOPPED"] },
+        "currentDowntimeReason": { "type": "string" },
+        "lastUpdated": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "code", "status"]
+    },
+    "DowntimeEvent": {
+      "title": "DowntimeEvent",
+      "description": "Downtime event record",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "machineId": { "type": "string" },
+        "startTime": { "type": "number" },
+        "endTime": { "type": "number" },
+        "reason": { "type": "string" },
+        "category": { "type": "string" },
+        "isPlanned": { "type": "boolean" }
+      },
+      "required": ["id", "machineId", "startTime", "reason"]
+    },
+    "ShiftAssignment": {
+      "title": "ShiftAssignment",
+      "description": "Shift assignment record for an area",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "area": { "type": "number" },
+        "shift": { "type": "string", "enum": ["Ca 1", "Ca 2", "Ca 3"] },
+        "date": { "type": "string" },
+        "operatorName": { "type": "string" },
+        "maintenanceName": { "type": "string" },
+        "teamLeaderName": { "type": "string" },
+        "machineAssignments": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "machineId": { "type": "string" },
+              "productName": { "type": "string" },
+              "employeeName": { "type": "string" },
+              "standardRT": { "type": "number" },
+              "assignedRT": { "type": "number" },
+              "notes": { "type": "string" }
+            }
+          }
+        },
+        "notes": { "type": "string" }
+      },
+      "required": ["id", "area", "shift", "date"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "User profiles"
+    },
+    "/machines/{machineId}": {
+      "schema": "Machine",
+      "description": "Machine statuses"
+    },
+    "/events/{eventId}": {
+      "schema": "DowntimeEvent",
+      "description": "Downtime events"
+    },
+    "/shifts/{shiftId}": {
+      "schema": "ShiftAssignment",
+      "description": "Shift assignments"
+    }
+  }
+}

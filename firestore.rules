@@ -1,0 +1,112 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: users
+    // Document ID: userId (uid)
+    // Fields:
+    //   - uid: string (required)
+    //   - email: string (required)
+    //   - displayName: string
+    //   - photoURL: string
+    //   - role: string (enum: OPERATOR, TEAM_LEADER, MAINTENANCE, MANAGER)
+    //   - createdAt: timestamp
+    //
+    // Collection: machines
+    // Document ID: machineId
+    // Fields:
+    //   - id: string (required)
+    //   - code: string (required)
+    //   - status: string (enum: RUNNING, STOPPED)
+    //   - currentDowntimeReason: string
+    //   - lastUpdated: timestamp
+    //   ... other machine details
+    //
+    // Collection: events
+    // Document ID: auto-generated
+    // Fields:
+    //   - machineId: string (required)
+    //   - startTime: number (required)
+    //   - endTime: number
+    //   - reason: string (required)
+    //   - category: string
+    //   - isPlanned: boolean
+    //
+    // ===============================================================
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() && 
+        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'MANAGER' ||
+         request.auth.token.email == "xiemtoiyeuquehuong@gmail.com");
+    }
+
+    function hasRequiredFields(fields) {
+      return request.resource.data.keys().hasAll(fields);
+    }
+
+    function hasOnlyAllowedFields(fields) {
+      return request.resource.data.keys().hasOnly(fields);
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+
+    match /users/{userId} {
+      function isValidUser(data) {
+        return data.uid is string && data.uid.size() > 0 &&
+               data.email is string && data.email.size() > 0 &&
+               (data.role in ['OPERATOR', 'TEAM_LEADER', 'MAINTENANCE', 'MANAGER']);
+      }
+
+      allow read: if isAuthenticated();
+      allow create: if isOwner(userId) && isValidUser(request.resource.data) && request.resource.data.role == 'OPERATOR';
+      allow update: if isAdmin() || (isOwner(userId) && request.resource.data.role == resource.data.role);
+    }
+
+    match /machines/{machineId} {
+      function isValidMachine(data) {
+        return data.id is string && data.code is string &&
+               (data.status in ['RUNNING', 'STOPPED']);
+      }
+
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated() && isValidMachine(request.resource.data);
+    }
+
+    match /events/{eventId} {
+      function isValidEvent(data) {
+        return data.machineId is string && data.startTime is number && data.reason is string;
+      }
+
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && isValidEvent(request.resource.data);
+      allow update: if isAuthenticated() && isValidEvent(request.resource.data);
+    }
+
+    match /shifts/{shiftId} {
+      function isValidShift(data) {
+        return data.area is number && data.shift in ['Ca 1', 'Ca 2', 'Ca 3'] &&
+               data.date is string && data.operatorName is string;
+      }
+
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated() && (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['TEAM_LEADER', 'MANAGER'] || isAdmin());
+    }
+  }
+}
